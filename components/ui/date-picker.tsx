@@ -46,7 +46,7 @@ export function DatePicker({
           mode="single"
           selected={date}
           onSelect={onDateChange}
-          className="rounded-lg border [--cell-size:2.75rem] md:[--cell-size:3rem]"
+          className="rounded-lg [--cell-size:2.75rem] md:[--cell-size:3rem]"
         />
       </PopoverContent>
     </Popover>
