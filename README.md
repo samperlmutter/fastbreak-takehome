@@ -87,10 +87,10 @@ See `supabase/schema.sql` for the complete schema with Row Level Security polici
 
 3. Set up environment variables:
    ```bash
-   cp .env.example .env.local
+   cp .env.example .env
    ```
 
-4. Add your Supabase credentials to `.env.local`:
+4. Add your Supabase credentials to `.env`:
    ```
    NEXT_PUBLIC_SUPABASE_URL=your-project-url.supabase.co
    NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
@@ -131,11 +131,11 @@ npm start
 
 ### Using Docker Compose
 
-1. Ensure your `.env.local` file has all required environment variables
+1. Ensure your `.env` file has all required environment variables
 
 2. Build and run with Docker Compose:
    ```bash
-   docker-compose up --build
+   docker compose up --build
    ```
 
 3. The application will be available at http://localhost:3000

@@ -34,6 +34,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { DatePicker } from '@/components/ui/date-picker'
+import { TimePicker } from '@/components/ui/time-picker'
 import {
   createEventAction,
   updateEventAction,
@@ -51,6 +53,7 @@ const SPORT_TYPES = [
   'Cricket',
   'Rugby',
   'Swimming',
+  'Robotics'
 ]
 
 const venueSchema = z.object({
@@ -237,10 +240,17 @@ export function EventForm({ event }: EventFormProps) {
                   <FormItem>
                     <FormLabel>Date</FormLabel>
                     <FormControl>
-                      <Input
-                        type="date"
-                        {...field}
+                      <DatePicker
+                        date={field.value ? new Date(field.value) : undefined}
+                        onDateChange={(date) => {
+                          if (date) {
+                            field.onChange(date.toISOString().split('T')[0])
+                          } else {
+                            field.onChange('')
+                          }
+                        }}
                         disabled={isSubmitting}
+                        placeholder="Select event date"
                       />
                     </FormControl>
                     <FormMessage />
@@ -255,10 +265,11 @@ export function EventForm({ event }: EventFormProps) {
                   <FormItem>
                     <FormLabel>Time</FormLabel>
                     <FormControl>
-                      <Input
-                        type="time"
-                        {...field}
+                      <TimePicker
+                        value={field.value}
+                        onChange={field.onChange}
                         disabled={isSubmitting}
+                        placeholder="Select event time"
                       />
                     </FormControl>
                     <FormMessage />
