@@ -91,7 +91,11 @@ export function EventForm({ event }: EventFormProps) {
 
   if (event) {
     const eventDate = new Date(event.date_time)
-    defaultDate = eventDate.toISOString().split('T')[0]
+    // Extract local date components to avoid timezone issues
+    const year = eventDate.getFullYear()
+    const month = String(eventDate.getMonth() + 1).padStart(2, '0')
+    const day = String(eventDate.getDate()).padStart(2, '0')
+    defaultDate = `${year}-${month}-${day}`
     defaultTime = eventDate.toTimeString().slice(0, 5)
   }
 
@@ -236,26 +240,40 @@ export function EventForm({ event }: EventFormProps) {
               <FormField
                 control={form.control}
                 name="date"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Date</FormLabel>
-                    <FormControl>
-                      <DatePicker
-                        date={field.value ? new Date(field.value) : undefined}
-                        onDateChange={(date) => {
-                          if (date) {
-                            field.onChange(date.toISOString().split('T')[0])
-                          } else {
-                            field.onChange('')
-                          }
-                        }}
-                        disabled={isSubmitting}
-                        placeholder="Select event date"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  // Parse string date to Date object (local timezone)
+                  const dateValue = field.value
+                    ? (() => {
+                        const [year, month, day] = field.value.split('-').map(Number)
+                        return new Date(year, month - 1, day)
+                      })()
+                    : undefined
+
+                  return (
+                    <FormItem>
+                      <FormLabel>Date</FormLabel>
+                      <FormControl>
+                        <DatePicker
+                          date={dateValue}
+                          onDateChange={(date) => {
+                            if (date) {
+                              // Convert Date to string (local timezone)
+                              const year = date.getFullYear()
+                              const month = String(date.getMonth() + 1).padStart(2, '0')
+                              const day = String(date.getDate()).padStart(2, '0')
+                              field.onChange(`${year}-${month}-${day}`)
+                            } else {
+                              field.onChange('')
+                            }
+                          }}
+                          disabled={isSubmitting}
+                          placeholder="Select event date"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )
+                }}
               />
 
               <FormField

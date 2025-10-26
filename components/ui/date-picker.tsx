@@ -1,8 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { format } from "date-fns"
-import { Calendar as CalendarIcon } from "lucide-react"
+import { ChevronDownIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -32,13 +31,13 @@ export function DatePicker({
         <Button
           variant={"outline"}
           className={cn(
-            "h-10 w-full justify-start text-left font-normal",
+            "h-10 w-full justify-between font-normal bg-background dark:bg-background shadow-none",
             !date && "text-muted-foreground"
           )}
           disabled={disabled}
         >
-          <CalendarIcon className="mr-2 h-4 w-4" />
-          {date ? format(date, "PPP") : <span>{placeholder}</span>}
+          {date ? date.toLocaleDateString() : placeholder}
+          <ChevronDownIcon className="h-4 w-4" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
