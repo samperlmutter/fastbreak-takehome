@@ -8,6 +8,9 @@ import { createAction } from './action-wrapper'
 import { ActionResponse } from './types'
 import { Event, EventWithVenues, Venue } from '@/lib/supabase/types'
 
+// Re-export types for use in components
+export type { EventWithVenues, Event, Venue }
+
 // Validation schemas
 const venueSchema = z.object({
   id: z.string().optional(),
