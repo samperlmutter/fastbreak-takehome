@@ -346,10 +346,16 @@ export async function getEventsAction(input: GetEventsInput = {}): Promise<Actio
   try {
     const supabase = await createClient()
 
-    // Build query
+    // Build query with nested select to fetch events and their venues in a single query
+    // This eliminates the N+1 query problem
     let query = supabase
       .from('events')
-      .select('*')
+      .select(`
+        *,
+        event_venues (
+          venues (*)
+        )
+      `)
       .order('date_time', { ascending: true })
 
     // Apply search filter
@@ -362,38 +368,23 @@ export async function getEventsAction(input: GetEventsInput = {}): Promise<Actio
       query = query.eq('sport_type', validation.data.sportType.trim())
     }
 
-    const { data: events, error: eventsError } = await query
+    const { data: eventsRaw, error: eventsError } = await query
 
     if (eventsError) {
       console.error('Events fetch error:', eventsError)
       throw new Error('Failed to fetch events')
     }
 
-    // Fetch venues for each event
-    const eventsWithVenues: EventWithVenues[] = await Promise.all(
-      (events || []).map(async (event) => {
-        const { data: eventVenues } = await supabase
-          .from('event_venues')
-          .select('venue_id')
-          .eq('event_id', event.id)
-
-        const venueIds = eventVenues?.map((ev) => ev.venue_id) || []
-
-        if (venueIds.length === 0) {
-          return { ...event, venues: [] }
-        }
-
-        const { data: venues } = await supabase
-          .from('venues')
-          .select('*')
-          .in('id', venueIds)
-
-        return {
-          ...event,
-          venues: venues || [],
-        }
-      })
-    )
+    // Transform nested structure to match EventWithVenues type
+    // Supabase returns: { ...event, event_venues: [{ venues: {...} }] }
+    // We need: { ...event, venues: [{...}] }
+    const eventsWithVenues: EventWithVenues[] = (eventsRaw || []).map((event: any) => {
+      const { event_venues, ...eventData } = event
+      return {
+        ...eventData,
+        venues: event_venues?.map((ev: any) => ev.venues).filter((v: any) => v != null) || [],
+      }
+    })
 
     return {
       success: true,
