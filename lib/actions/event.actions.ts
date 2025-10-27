@@ -301,15 +301,21 @@ export async function deleteEventAction(input: DeleteEventInput): Promise<Action
 
     // Delete event (cascade will handle event_venues)
     // RLS policy ensures only owner can delete
-    const { error: deleteError } = await supabase
+    const { data: deletedEvent, error: deleteError } = await supabase
       .from('events')
       .delete()
       .eq('id', id)
       .eq('user_id', user.id)
+      .select()
+      .maybeSingle()
 
     if (deleteError) {
       console.error('Event deletion error:', deleteError)
       throw new Error('Failed to delete event')
+    }
+
+    if (!deletedEvent) {
+      throw new Error('Event not found or you do not have permission to delete it')
     }
 
     revalidatePath('/dashboard')
