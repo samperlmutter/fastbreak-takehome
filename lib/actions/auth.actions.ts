@@ -1,11 +1,9 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
-import { createAction } from './action-wrapper'
 import { ActionResponse } from './types'
 
 // Validation schemas
@@ -33,14 +31,21 @@ type LoginInput = z.infer<typeof loginSchema>
 /**
  * Sign up a new user with email and password
  */
-export const signUpAction = createAction({
-  schema: signUpSchema,
-  requireAuth: false,
-  successMessage: 'Account created successfully',
-  handler: async (input: SignUpInput) => {
+export async function signUpAction(input: SignUpInput): Promise<ActionResponse> {
+  // Validate input
+  const validation = signUpSchema.safeParse(input)
+  if (!validation.success) {
+    return {
+      success: false,
+      error: 'Validation failed',
+      fieldErrors: validation.error.flatten().fieldErrors as Record<string, string[]>,
+    }
+  }
+
+  try {
     const supabase = await createClient()
 
-    const { email, password } = input
+    const { email, password } = validation.data
 
     // Get the origin dynamically from request headers
     const headersList = await headers()
@@ -70,26 +75,44 @@ export const signUpAction = createAction({
       // Return custom message for email confirmation scenario
       // This also handles duplicate email (Supabase security feature)
       return {
+        success: true,
         data: undefined,
         message: 'Please check your email to confirm your account',
       }
     }
 
-    return undefined
-  },
-})
+    return {
+      success: true,
+      data: undefined,
+      message: 'Account created successfully',
+    }
+  } catch (error) {
+    console.error('Server action error:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'An unexpected error occurred',
+    }
+  }
+}
 
 /**
  * Log in an existing user with email and password
  */
-export const loginAction = createAction({
-  schema: loginSchema,
-  requireAuth: false,
-  successMessage: 'Logged in successfully',
-  handler: async (input: LoginInput) => {
+export async function loginAction(input: LoginInput): Promise<ActionResponse> {
+  // Validate input
+  const validation = loginSchema.safeParse(input)
+  if (!validation.success) {
+    return {
+      success: false,
+      error: 'Validation failed',
+      fieldErrors: validation.error.flatten().fieldErrors as Record<string, string[]>,
+    }
+  }
+
+  try {
     const supabase = await createClient()
 
-    const { email, password } = input
+    const { email, password } = validation.data
 
     // Sign in the user
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -106,17 +129,26 @@ export const loginAction = createAction({
     }
 
     revalidatePath('/', 'layout')
-    return undefined
-  },
-})
+
+    return {
+      success: true,
+      data: undefined,
+      message: 'Logged in successfully',
+    }
+  } catch (error) {
+    console.error('Server action error:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'An unexpected error occurred',
+    }
+  }
+}
 
 /**
  * Log out the current user
  */
-export const logoutAction = createAction({
-  requireAuth: false,
-  successMessage: 'Logged out successfully',
-  handler: async () => {
+export async function logoutAction(): Promise<ActionResponse> {
+  try {
     const supabase = await createClient()
 
     const { error } = await supabase.auth.signOut()
@@ -126,16 +158,26 @@ export const logoutAction = createAction({
     }
 
     revalidatePath('/', 'layout')
-    return undefined
-  },
-})
+
+    return {
+      success: true,
+      data: undefined,
+      message: 'Logged out successfully',
+    }
+  } catch (error) {
+    console.error('Server action error:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'An unexpected error occurred',
+    }
+  }
+}
 
 /**
  * Sign in with Google OAuth
  */
-export const signInWithGoogleAction = createAction({
-  requireAuth: false,
-  handler: async () => {
+export async function signInWithGoogleAction(): Promise<ActionResponse<{ url: string }>> {
+  try {
     const supabase = await createClient()
 
     // Get the origin dynamically from request headers
@@ -157,6 +199,15 @@ export const signInWithGoogleAction = createAction({
       throw new Error('Failed to get OAuth URL')
     }
 
-    return { url: data.url }
-  },
-})
+    return {
+      success: true,
+      data: { url: data.url },
+    }
+  } catch (error) {
+    console.error('Server action error:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'An unexpected error occurred',
+    }
+  }
+}

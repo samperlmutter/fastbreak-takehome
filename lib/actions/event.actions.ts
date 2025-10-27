@@ -3,8 +3,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
-import { createClient } from '@/lib/supabase/server'
-import { createAction } from './action-wrapper'
+import { createClient, getUser } from '@/lib/supabase/server'
 import { ActionResponse } from './types'
 import { Event, EventWithVenues, Venue } from '@/lib/supabase/types'
 
@@ -55,14 +54,30 @@ type GetEventsInput = z.infer<typeof getEventsSchema>
 /**
  * Create a new event with venues
  */
-export const createEventAction = createAction({
-  schema: createEventSchema,
-  requireAuth: true,
-  successMessage: 'Event created successfully',
-  handler: async (input: CreateEventInput, userId) => {
+export async function createEventAction(input: CreateEventInput): Promise<ActionResponse<Event>> {
+  // Validate input
+  const validation = createEventSchema.safeParse(input)
+  if (!validation.success) {
+    return {
+      success: false,
+      error: 'Validation failed',
+      fieldErrors: validation.error.flatten().fieldErrors as Record<string, string[]>,
+    }
+  }
+
+  // Check authentication
+  const user = await getUser()
+  if (!user) {
+    return {
+      success: false,
+      error: 'Authentication required. Please log in.',
+    }
+  }
+
+  try {
     const supabase = await createClient()
 
-    const { name, sport_type, date_time, description, venues } = input
+    const { name, sport_type, date_time, description, venues } = validation.data
 
     // Insert event
     const { data: event, error: eventError } = await supabase
@@ -72,7 +87,7 @@ export const createEventAction = createAction({
         sport_type,
         date_time,
         description: description || null,
-        user_id: userId,
+        user_id: user.id,
       } as any)
       .select()
       .single()
@@ -122,21 +137,47 @@ export const createEventAction = createAction({
 
     revalidatePath('/dashboard')
 
-    return event
-  },
-})
+    return {
+      success: true,
+      data: event,
+      message: 'Event created successfully',
+    }
+  } catch (error) {
+    console.error('Server action error:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'An unexpected error occurred',
+    }
+  }
+}
 
 /**
  * Update an existing event
  */
-export const updateEventAction = createAction({
-  schema: updateEventSchema,
-  requireAuth: true,
-  successMessage: 'Event updated successfully',
-  handler: async (input: UpdateEventInput, userId) => {
+export async function updateEventAction(input: UpdateEventInput): Promise<ActionResponse<Event>> {
+  // Validate input
+  const validation = updateEventSchema.safeParse(input)
+  if (!validation.success) {
+    return {
+      success: false,
+      error: 'Validation failed',
+      fieldErrors: validation.error.flatten().fieldErrors as Record<string, string[]>,
+    }
+  }
+
+  // Check authentication
+  const user = await getUser()
+  if (!user) {
+    return {
+      success: false,
+      error: 'Authentication required. Please log in.',
+    }
+  }
+
+  try {
     const supabase = await createClient()
 
-    const { id, name, sport_type, date_time, description, venues } = input
+    const { id, name, sport_type, date_time, description, venues } = validation.data
 
     // First check if event exists and verify ownership
     const { data: existingEvent, error: fetchError } = await supabase
@@ -151,7 +192,7 @@ export const updateEventAction = createAction({
     }
 
     // Check ownership
-    if (existingEvent.user_id !== userId) {
+    if (existingEvent.user_id !== user.id) {
       throw new Error('You do not have permission to edit this event')
     }
 
@@ -216,21 +257,47 @@ export const updateEventAction = createAction({
 
     revalidatePath('/dashboard')
 
-    return event
-  },
-})
+    return {
+      success: true,
+      data: event,
+      message: 'Event updated successfully',
+    }
+  } catch (error) {
+    console.error('Server action error:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'An unexpected error occurred',
+    }
+  }
+}
 
 /**
  * Delete an event
  */
-export const deleteEventAction = createAction({
-  schema: deleteEventSchema,
-  requireAuth: true,
-  successMessage: 'Event deleted successfully',
-  handler: async (input: DeleteEventInput, userId) => {
+export async function deleteEventAction(input: DeleteEventInput): Promise<ActionResponse> {
+  // Validate input
+  const validation = deleteEventSchema.safeParse(input)
+  if (!validation.success) {
+    return {
+      success: false,
+      error: 'Validation failed',
+      fieldErrors: validation.error.flatten().fieldErrors as Record<string, string[]>,
+    }
+  }
+
+  // Check authentication
+  const user = await getUser()
+  if (!user) {
+    return {
+      success: false,
+      error: 'Authentication required. Please log in.',
+    }
+  }
+
+  try {
     const supabase = await createClient()
 
-    const { id } = input
+    const { id } = validation.data
 
     // Delete event (cascade will handle event_venues)
     // RLS policy ensures only owner can delete
@@ -238,7 +305,7 @@ export const deleteEventAction = createAction({
       .from('events')
       .delete()
       .eq('id', id)
-      .eq('user_id', userId)
+      .eq('user_id', user.id)
 
     if (deleteError) {
       console.error('Event deletion error:', deleteError)
@@ -247,18 +314,36 @@ export const deleteEventAction = createAction({
 
     revalidatePath('/dashboard')
 
-    return undefined
-  },
-})
+    return {
+      success: true,
+      data: undefined,
+      message: 'Event deleted successfully',
+    }
+  } catch (error) {
+    console.error('Server action error:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'An unexpected error occurred',
+    }
+  }
+}
 
 /**
  * Get all events with optional filtering
  * This runs server-side and supports search and filtering
  */
-export const getEventsAction = createAction({
-  schema: getEventsSchema,
-  requireAuth: false,
-  handler: async (input: GetEventsInput = {}) => {
+export async function getEventsAction(input: GetEventsInput = {}): Promise<ActionResponse<EventWithVenues[]>> {
+  // Validate input
+  const validation = getEventsSchema.safeParse(input)
+  if (!validation.success) {
+    return {
+      success: false,
+      error: 'Validation failed',
+      fieldErrors: validation.error.flatten().fieldErrors as Record<string, string[]>,
+    }
+  }
+
+  try {
     const supabase = await createClient()
 
     // Build query
@@ -268,13 +353,13 @@ export const getEventsAction = createAction({
       .order('date_time', { ascending: true })
 
     // Apply search filter
-    if (input.search && input.search.trim()) {
-      query = query.ilike('name', `%${input.search.trim()}%`)
+    if (validation.data.search && validation.data.search.trim()) {
+      query = query.ilike('name', `%${validation.data.search.trim()}%`)
     }
 
     // Apply sport type filter
-    if (input.sportType && input.sportType.trim()) {
-      query = query.eq('sport_type', input.sportType.trim())
+    if (validation.data.sportType && validation.data.sportType.trim()) {
+      query = query.eq('sport_type', validation.data.sportType.trim())
     }
 
     const { data: events, error: eventsError } = await query
@@ -310,16 +395,24 @@ export const getEventsAction = createAction({
       })
     )
 
-    return eventsWithVenues
-  },
-})
+    return {
+      success: true,
+      data: eventsWithVenues,
+    }
+  } catch (error) {
+    console.error('Server action error:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'An unexpected error occurred',
+    }
+  }
+}
 
 /**
  * Get a single event by ID
  */
-export const getEventByIdAction = createAction({
-  requireAuth: false,
-  handler: async (id: string) => {
+export async function getEventByIdAction(id: string): Promise<ActionResponse<EventWithVenues>> {
+  try {
     const supabase = await createClient()
 
     const { data: event, error: eventError } = await supabase
@@ -353,18 +446,26 @@ export const getEventByIdAction = createAction({
     }
 
     return {
-      ...event,
-      venues,
+      success: true,
+      data: {
+        ...event,
+        venues,
+      },
     }
-  },
-})
+  } catch (error) {
+    console.error('Server action error:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'An unexpected error occurred',
+    }
+  }
+}
 
 /**
  * Get all available venues
  */
-export const getVenuesAction = createAction({
-  requireAuth: false,
-  handler: async () => {
+export async function getVenuesAction(): Promise<ActionResponse<Venue[]>> {
+  try {
     const supabase = await createClient()
 
     const { data: venues, error } = await supabase
@@ -377,6 +478,15 @@ export const getVenuesAction = createAction({
       throw new Error('Failed to fetch venues')
     }
 
-    return venues || []
-  },
-})
+    return {
+      success: true,
+      data: venues || [],
+    }
+  } catch (error) {
+    console.error('Server action error:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'An unexpected error occurred',
+    }
+  }
+}
