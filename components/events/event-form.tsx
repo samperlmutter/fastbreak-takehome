@@ -41,20 +41,7 @@ import {
   updateEventAction,
 } from '@/lib/actions/event.actions'
 import { EventWithVenues } from '@/lib/supabase/types'
-
-const SPORT_TYPES = [
-  'Soccer',
-  'Basketball',
-  'Tennis',
-  'Baseball',
-  'Football',
-  'Volleyball',
-  'Hockey',
-  'Cricket',
-  'Rugby',
-  'Swimming',
-  'Robotics'
-]
+import { SPORT_TYPES } from '@/lib/constants/sports'
 
 const venueSchema = z.object({
   id: z.string().optional(),

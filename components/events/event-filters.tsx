@@ -9,19 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-
-const SPORT_TYPES = [
-  'Soccer',
-  'Basketball',
-  'Tennis',
-  'Baseball',
-  'Football',
-  'Volleyball',
-  'Hockey',
-  'Cricket',
-  'Rugby',
-  'Swimming',
-]
+import { SPORT_TYPES } from '@/lib/constants/sports'
 
 interface EventFiltersProps {
   search: string
