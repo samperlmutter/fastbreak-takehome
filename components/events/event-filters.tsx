@@ -77,7 +77,6 @@ export function EventFilters({
             value={search}
             onChange={(e) => handleSearchChange(e.target.value)}
             className="pl-10"
-            disabled={isPending}
           />
         </div>
 
@@ -85,7 +84,6 @@ export function EventFilters({
         <Select
           value={sportType || 'all'}
           onValueChange={handleSportTypeChange}
-          disabled={isPending}
         >
           <SelectTrigger className="w-full sm:w-60">
             <SelectValue placeholder="Filter by sport" />
@@ -118,7 +116,6 @@ export function EventFilters({
           <button
             onClick={handleClearFilters}
             className="text-sm text-primary hover:underline"
-            disabled={isPending}
           >
             Clear all
           </button>
