@@ -48,8 +48,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       <main className="container mx-auto px-4 py-8">
         <Suspense fallback={<EventListSkeleton />}>
           <EventList
-            initialSearch={params.search}
-            initialSportType={params.sportType}
+            searchQuery={params.search}
+            sportTypeFilter={params.sportType}
           />
         </Suspense>
       </main>
