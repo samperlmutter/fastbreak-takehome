@@ -5,9 +5,18 @@ import { headers } from 'next/headers'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { ActionResponse } from './types'
+import type { Database } from '@/lib/supabase/types'
 
 // Validation schemas
 const signUpSchema = z.object({
+  firstName: z
+    .string()
+    .min(1, 'First name is required')
+    .max(100, 'First name must be less than 100 characters'),
+  lastName: z
+    .string()
+    .min(1, 'Last name is required')
+    .max(100, 'Last name must be less than 100 characters'),
   email: z.string().email('Invalid email address'),
   password: z
     .string()
@@ -45,18 +54,22 @@ export async function signUpAction(input: SignUpInput): Promise<ActionResponse> 
   try {
     const supabase = await createClient()
 
-    const { email, password } = validation.data
+    const { firstName, lastName, email, password } = validation.data
 
     // Get the origin dynamically from request headers
     const headersList = await headers()
     const origin = headersList.get('origin') || headersList.get('referer')?.split('/').slice(0, 3).join('/') || 'http://localhost:3000'
 
-    // Sign up the user
+    // Sign up the user - store first/last name in metadata
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: `${origin}/auth/callback`,
+        data: {
+          first_name: firstName,
+          last_name: lastName,
+        },
       },
     })
 
@@ -66,6 +79,24 @@ export async function signUpAction(input: SignUpInput): Promise<ActionResponse> 
 
     if (!data.user) {
       throw new Error('Failed to create user account')
+    }
+
+    // Only create profile if we have a session (email confirmation disabled)
+    // Otherwise, profile will be created in callback handler after email confirmation
+    if (data.session) {
+      const profileData: Database['public']['Tables']['profiles']['Insert'] = {
+        id: data.user.id,
+        first_name: firstName,
+        last_name: lastName,
+      }
+      const { error: profileError } = await (supabase
+        .from('profiles') as any)
+        .insert(profileData)
+
+      if (profileError) {
+        console.error('Profile creation error:', profileError)
+        // Don't throw here - user account is created, profile can be added later
+      }
     }
 
     revalidatePath('/', 'layout')
@@ -126,6 +157,33 @@ export async function loginAction(input: LoginInput): Promise<ActionResponse> {
 
     if (!data.session) {
       throw new Error('Failed to create session')
+    }
+
+    // Safety check: ensure profile exists (in case callback didn't run)
+    if (data.user) {
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', data.user.id)
+        .single()
+
+      if (!existingProfile && data.user.user_metadata) {
+        // Create profile from metadata only if we have a real first name
+        const firstName = data.user.user_metadata.first_name as string | undefined
+        const lastName = (data.user.user_metadata.last_name as string) || ''
+
+        // Only create profile if first name exists
+        if (firstName) {
+          const profileData: Database['public']['Tables']['profiles']['Insert'] = {
+            id: data.user.id,
+            first_name: firstName,
+            last_name: lastName,
+          }
+
+          await (supabase.from('profiles') as any).insert(profileData)
+          // Ignore errors here - not critical
+        }
+      }
     }
 
     revalidatePath('/', 'layout')

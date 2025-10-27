@@ -2,7 +2,7 @@ import { Suspense } from 'react'
 import Link from 'next/link'
 import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { getUser } from '@/lib/supabase/server'
+import { getUserProfile } from '@/lib/supabase/server'
 import { EventList } from '@/components/events/event-list'
 import { EventListSkeleton } from '@/components/events/event-list-skeleton'
 import { LogoutButton } from '@/components/auth/logout-button'
@@ -12,12 +12,15 @@ interface DashboardPageProps {
 }
 
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
-  const user = await getUser()
+  const userProfile = await getUserProfile()
   const params = await searchParams
 
-  if (!user) {
+  if (!userProfile) {
     return null // Middleware will redirect
   }
+
+  // Get display name - prefer first name, fallback to email
+  const displayName = userProfile.profile?.first_name || userProfile.user.email
 
   return (
     <div className="min-h-screen bg-background">
@@ -28,7 +31,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             <div>
               <h1 className="text-2xl font-bold">Fastbreak Event Dashboard</h1>
               <p className="text-sm text-muted-foreground">
-                Welcome back, {user.email}
+                Welcome back, {displayName}
               </p>
             </div>
             <div className="flex items-center gap-4">

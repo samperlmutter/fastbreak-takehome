@@ -30,12 +30,22 @@ CREATE TABLE IF NOT EXISTS event_venues (
     PRIMARY KEY (event_id, venue_id)
 );
 
+-- Create profiles table to store user information
+CREATE TABLE IF NOT EXISTS profiles (
+    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Create indexes for better query performance
 CREATE INDEX IF NOT EXISTS idx_events_user_id ON events(user_id);
 CREATE INDEX IF NOT EXISTS idx_events_sport_type ON events(sport_type);
 CREATE INDEX IF NOT EXISTS idx_events_date_time ON events(date_time);
 CREATE INDEX IF NOT EXISTS idx_event_venues_event_id ON event_venues(event_id);
 CREATE INDEX IF NOT EXISTS idx_event_venues_venue_id ON event_venues(venue_id);
+CREATE INDEX IF NOT EXISTS idx_profiles_id ON profiles(id);
 
 -- Create a function to automatically update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -53,10 +63,18 @@ CREATE TRIGGER update_events_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
+-- Create trigger for profiles table
+DROP TRIGGER IF EXISTS update_profiles_updated_at ON profiles;
+CREATE TRIGGER update_profiles_updated_at
+    BEFORE UPDATE ON profiles
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
 -- Enable Row Level Security (RLS)
 ALTER TABLE events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE venues ENABLE ROW LEVEL SECURITY;
 ALTER TABLE event_venues ENABLE ROW LEVEL SECURITY;
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies for events table
 -- Users can view all events
@@ -108,3 +126,16 @@ CREATE POLICY "Users can delete event venues for their events" ON event_venues
             AND events.user_id = auth.uid()
         )
     );
+
+-- RLS Policies for profiles table
+-- Anyone can view profiles (needed to display event creator names)
+CREATE POLICY "Anyone can view profiles" ON profiles
+    FOR SELECT USING (true);
+
+-- Users can only update their own profile
+CREATE POLICY "Users can update their own profile" ON profiles
+    FOR UPDATE USING (auth.uid() = id);
+
+-- Authenticated users can insert their own profile
+CREATE POLICY "Users can insert their own profile" ON profiles
+    FOR INSERT WITH CHECK (auth.uid() = id);

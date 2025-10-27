@@ -81,6 +81,29 @@ export interface Database {
           venue_id?: string
         }
       }
+      profiles: {
+        Row: {
+          id: string
+          first_name: string
+          last_name: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id: string
+          first_name: string
+          last_name: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          first_name?: string
+          last_name?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
   }
 }
@@ -88,6 +111,7 @@ export interface Database {
 export type Event = Database['public']['Tables']['events']['Row']
 export type Venue = Database['public']['Tables']['venues']['Row']
 export type EventVenue = Database['public']['Tables']['event_venues']['Row']
+export type Profile = Database['public']['Tables']['profiles']['Row']
 
 export type EventWithVenues = Event & {
   venues: Venue[]
