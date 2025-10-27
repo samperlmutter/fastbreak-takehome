@@ -194,7 +194,7 @@ export function EventForm({ event }: EventFormProps) {
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Event Name</FormLabel>
+                  <FormLabel required>Event Name</FormLabel>
                   <FormControl>
                     <Input
                       placeholder="e.g., Summer Basketball Tournament"
@@ -212,7 +212,7 @@ export function EventForm({ event }: EventFormProps) {
               name="sport_type"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Sport Type</FormLabel>
+                  <FormLabel required>Sport Type</FormLabel>
                   <Select
                     onValueChange={field.onChange}
                     defaultValue={field.value}
@@ -251,7 +251,7 @@ export function EventForm({ event }: EventFormProps) {
 
                   return (
                     <FormItem>
-                      <FormLabel>Date</FormLabel>
+                      <FormLabel required>Date</FormLabel>
                       <FormControl>
                         <DatePicker
                           date={dateValue}
@@ -281,7 +281,7 @@ export function EventForm({ event }: EventFormProps) {
                 name="time"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Time</FormLabel>
+                    <FormLabel required>Time</FormLabel>
                     <FormControl>
                       <TimePicker
                         value={field.value}
@@ -354,7 +354,7 @@ export function EventForm({ event }: EventFormProps) {
                   name={`venues.${index}.name`}
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Venue Name</FormLabel>
+                      <FormLabel required>Venue Name</FormLabel>
                       <FormControl>
                         <Input
                           placeholder="e.g., Madison Square Garden"
