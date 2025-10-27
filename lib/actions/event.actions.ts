@@ -199,7 +199,30 @@ export async function updateEventAction(
     const { id, name, sport_type, date_time, description, venues } =
       validation.data
 
-    // Update event
+    // First check if event exists and verify ownership
+    const { data: existingEvent, error: fetchError } = await supabase
+      .from('events')
+      .select('user_id')
+      .eq('id', id)
+      .single()
+
+    if (fetchError || !existingEvent) {
+      console.error('Event fetch error:', fetchError)
+      return {
+        success: false,
+        error: 'Event not found',
+      }
+    }
+
+    // Check ownership
+    if (existingEvent.user_id !== user.id) {
+      return {
+        success: false,
+        error: 'You do not have permission to edit this event',
+      }
+    }
+
+    // Update event (ownership verified)
     const { data: event, error: eventError } = await supabase
       .from('events')
       .update({
@@ -209,7 +232,6 @@ export async function updateEventAction(
         description: description || null,
       } as any)
       .eq('id', id)
-      .eq('user_id', user.id)
       .select()
       .single()
 
