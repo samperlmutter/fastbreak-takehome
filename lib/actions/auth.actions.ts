@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { headers } from 'next/headers'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { createAction } from './action-wrapper'
@@ -41,12 +42,16 @@ export const signUpAction = createAction({
 
     const { email, password } = input
 
+    // Get the origin dynamically from request headers
+    const headersList = await headers()
+    const origin = headersList.get('origin') || headersList.get('referer')?.split('/').slice(0, 3).join('/') || 'http://localhost:3000'
+
     // Sign up the user
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/callback`,
+        emailRedirectTo: `${origin}/auth/callback`,
       },
     })
 
@@ -133,10 +138,14 @@ export const signInWithGoogleAction = createAction({
   handler: async () => {
     const supabase = await createClient()
 
+    // Get the origin dynamically from request headers
+    const headersList = await headers()
+    const origin = headersList.get('origin') || headersList.get('referer')?.split('/').slice(0, 3).join('/') || 'http://localhost:3000'
+
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/callback`,
+        redirectTo: `${origin}/auth/callback`,
       },
     })
 
