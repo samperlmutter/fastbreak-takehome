@@ -1,6 +1,6 @@
 # Fastbreak Event Dashboard
 
-A full-stack Sports Event Management application built with Next.js 15, TypeScript, Supabase, and Shadcn UI.
+A full-stack Sports Event Management application built with Next.js 16, TypeScript, Supabase, and Shadcn UI.
 
 ## Features
 
@@ -22,16 +22,18 @@ A full-stack Sports Event Management application built with Next.js 15, TypeScri
   - Search by event name
   - Filter by sport type
   - Real-time updates
+  - Automatic dark mode (system preference-based)
 
 ## Tech Stack
 
-- **Framework:** Next.js 15 (App Router)
+- **Framework:** Next.js 16 (App Router)
 - **Language:** TypeScript
+- **Runtime:** React 19
 - **Database:** Supabase (PostgreSQL)
 - **Authentication:** Supabase Auth
-- **Styling:** Tailwind CSS
+- **Styling:** Tailwind CSS v4 (with @theme directive)
 - **UI Components:** Shadcn UI
-- **Forms:** React Hook Form + Zod
+- **Forms:** React Hook Form + Zod v4
 - **Notifications:** Sonner
 
 ## Architecture Highlights
@@ -48,7 +50,7 @@ All database interactions use Next.js Server Actions for type-safe, server-side 
 Key files:
 - `lib/actions/auth.actions.ts` - Authentication actions
 - `lib/actions/event.actions.ts` - Event CRUD operations
-- `lib/actions/action-wrapper.ts` - Generic action wrapper for type safety
+- `lib/actions/types.ts` - Action response types
 
 ### Authentication Flow
 
@@ -173,9 +175,11 @@ npm start
 │   └── ui/                # Shadcn UI components
 ├── lib/
 │   ├── actions/           # Server actions
-│   │   ├── action-wrapper.ts    # Type-safe action helper
 │   │   ├── auth.actions.ts      # Auth actions
-│   │   └── event.actions.ts     # Event actions
+│   │   ├── event.actions.ts     # Event actions
+│   │   └── types.ts             # Action response types
+│   ├── constants/         # App constants
+│   │   └── sports.ts            # Sport types
 │   ├── supabase/          # Supabase clients
 │   │   ├── server.ts      # Server-side client
 │   │   ├── middleware.ts  # Middleware client
@@ -192,16 +196,26 @@ npm start
 
 ### Type-Safe Server Actions
 
-All server actions use a generic wrapper for consistent error handling:
+All server actions follow a consistent pattern with Zod validation and error handling:
 
 ```typescript
-export const createEventAction = createAction({
-  schema: createEventSchema,
-  requireAuth: true,
-  handler: async (input, userId) => {
-    // Implementation
+export async function createEventAction(input: CreateEventInput): Promise<ActionResponse> {
+  // Validate input with Zod
+  const validation = createEventSchema.safeParse(input)
+  if (!validation.success) {
+    return { success: false, error: 'Validation failed', fieldErrors: ... }
   }
-})
+
+  // Check authentication
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Unauthorized' }
+
+  // Execute action
+  // ... implementation ...
+
+  return { success: true, data: result }
+}
 ```
 
 ### Form Handling

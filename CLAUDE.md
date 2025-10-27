@@ -2,7 +2,15 @@
 
 ## 🏗️ Project Architecture Overview
 
-This is a **full-stack Next.js 15 application** using the App Router with a strong emphasis on **server-side operations** and **type safety**.
+This is a **full-stack Next.js 16 application** using the App Router with a strong emphasis on **server-side operations** and **type safety**.
+
+**Core Technologies:**
+- Next.js 16 with App Router
+- React 19 (latest features and concurrent rendering)
+- TypeScript for end-to-end type safety
+- Tailwind CSS v4 (new @theme directive and PostCSS plugin)
+- Zod v4 for runtime validation
+- Supabase for database and authentication
 
 ---
 
@@ -36,21 +44,26 @@ fastbreak-takehome/
 │   │   └── event-list-skeleton.tsx # Loading state
 │   └── ui/                       # Shadcn UI components
 │       ├── button.tsx
+│       ├── calendar.tsx          # Date calendar
 │       ├── card.tsx
+│       ├── date-picker.tsx       # Date selection
 │       ├── dialog.tsx
 │       ├── form.tsx              # React Hook Form integration
 │       ├── input.tsx
 │       ├── label.tsx
+│       ├── popover.tsx           # Popover container
 │       ├── select.tsx
 │       ├── sonner.tsx            # Toast notifications
-│       └── textarea.tsx
+│       ├── textarea.tsx
+│       └── time-picker.tsx       # Time selection
 │
 ├── lib/                          # Core business logic
 │   ├── actions/                  # Server Actions (THE HEART OF THE APP)
-│   │   ├── action-wrapper.ts     # Generic type-safe action creator
 │   │   ├── auth.actions.ts       # Auth: login, signup, logout, OAuth
 │   │   ├── event.actions.ts      # Events: CRUD + search/filter
 │   │   └── types.ts              # ActionResponse types
+│   ├── constants/                # Application constants
+│   │   └── sports.ts             # Sport types (single source of truth)
 │   ├── supabase/                 # Database clients
 │   │   ├── server.ts             # Server Component client
 │   │   ├── middleware.ts         # Middleware client
@@ -79,29 +92,34 @@ This was the primary requirement, and it's the core pattern throughout:
 - Built-in CSRF protection
 - Progressive enhancement ready
 
-**Implementation:**
-```typescript
-// lib/actions/action-wrapper.ts - Generic wrapper
-export function createAction<TInput, TOutput>(options: {
-  schema?: ZodSchema<TInput>      // Validation
-  requireAuth?: boolean            // Auth check
-  handler: (input, userId?) => Promise<TOutput>
-})
-```
-
-Every action follows this pattern:
-1. Validates input with Zod
+**Implementation Pattern:**
+Every action follows a consistent pattern:
+1. Validates input with Zod schema
 2. Checks authentication if required
-3. Executes handler with user context
-4. Returns consistent response format
+3. Executes handler with database client
+4. Returns consistent `ActionResponse` format
 
-**Example Usage:**
+**Example:**
 ```typescript
 // lib/actions/event.actions.ts
-export async function createEventAction(input) {
-  // Validation happens automatically
-  // Auth check happens automatically
-  // Returns: { success: true, data: event } or { success: false, error: "..." }
+export async function createEventAction(input: CreateEventInput): Promise<ActionResponse<Event>> {
+  // 1. Validate input
+  const validation = createEventSchema.safeParse(input)
+  if (!validation.success) {
+    return { success: false, error: 'Validation failed', fieldErrors: ... }
+  }
+
+  // 2. Check authentication
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Unauthorized' }
+
+  // 3. Execute action
+  const { data, error } = await supabase.from('events').insert(...)
+
+  // 4. Return response
+  revalidatePath('/dashboard')
+  return { success: true, data: event, message: 'Event created' }
 }
 ```
 
@@ -257,16 +275,24 @@ export async function createEventAction(input) {
 }
 ```
 
-**Read Events** with Search/Filter (`lib/actions/event.actions.ts:306-362`):
+**Read Events** with Search/Filter (`lib/actions/event.actions.ts:335-409`):
 ```typescript
 export async function getEventsAction({ search, sportType }) {
-  let query = supabase.from('events').select('*')
+  // Single query with nested select - fetches events and venues in one go
+  let query = supabase
+    .from('events')
+    .select(`
+      *,
+      event_venues (
+        venues (*)
+      )
+    `)
 
   if (search) query = query.ilike('name', `%${search}%`)
   if (sportType) query = query.eq('sport_type', sportType)
 
-  // Fetch venues for each event (N+1 handled server-side)
-  // Returns EventWithVenues[]
+  // Transform nested structure to flat EventWithVenues[]
+  // Eliminates N+1 query problem
 }
 ```
 
@@ -350,9 +376,16 @@ export async function middleware(request) {
 ### **Shadcn UI Integration**
 All components from `components/ui/` follow Shadcn's patterns:
 - Composable primitives (Radix UI)
-- Tailwind CSS styling
+- Tailwind CSS v4 styling
 - Accessible by default
 - Customizable with CSS variables
+
+### **Dark Mode**
+Automatic dark mode based on system preferences:
+- Implemented using CSS `@media (prefers-color-scheme: dark)`
+- CSS variables defined for both light and dark themes in `globals.css`
+- No manual toggle - respects user's OS settings
+- Smooth transitions between themes
 
 ### **Toast Notifications**
 ```typescript
