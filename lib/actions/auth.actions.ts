@@ -32,27 +32,14 @@ type LoginInput = z.infer<typeof loginSchema>
 /**
  * Sign up a new user with email and password
  */
-export async function signUpAction(
-  input: SignUpInput
-): Promise<ActionResponse<void>> {
-  // Validate input
-  const validation = signUpSchema.safeParse(input)
-
-  if (!validation.success) {
-    return {
-      success: false,
-      error: 'Validation failed',
-      fieldErrors: validation.error.flatten().fieldErrors as Record<
-        string,
-        string[]
-      >,
-    }
-  }
-
-  const { email, password } = validation.data
-
-  try {
+export const signUpAction = createAction({
+  schema: signUpSchema,
+  requireAuth: false,
+  successMessage: 'Account created successfully',
+  handler: async (input: SignUpInput) => {
     const supabase = await createClient()
+
+    const { email, password } = input
 
     // Sign up the user
     const { data, error } = await supabase.auth.signUp({
@@ -64,67 +51,40 @@ export async function signUpAction(
     })
 
     if (error) {
-      return {
-        success: false,
-        error: error.message,
-      }
+      throw new Error(error.message)
     }
 
     if (!data.user) {
-      return {
-        success: false,
-        error: 'Failed to create user account',
-      }
+      throw new Error('Failed to create user account')
     }
+
+    revalidatePath('/', 'layout')
 
     // Check if email confirmation is required
     if (data.user && !data.session) {
+      // Return custom message for email confirmation scenario
+      // This also handles duplicate email (Supabase security feature)
       return {
-        success: true,
         data: undefined,
         message: 'Please check your email to confirm your account',
       }
     }
 
-    revalidatePath('/', 'layout')
-    return {
-      success: true,
-      data: undefined,
-      message: 'Account created successfully',
-    }
-  } catch (error) {
-    console.error('Sign up error:', error)
-    return {
-      success: false,
-      error: 'An unexpected error occurred. Please try again.',
-    }
-  }
-}
+    return undefined
+  },
+})
 
 /**
  * Log in an existing user with email and password
  */
-export async function loginAction(
-  input: LoginInput
-): Promise<ActionResponse<void>> {
-  // Validate input
-  const validation = loginSchema.safeParse(input)
-
-  if (!validation.success) {
-    return {
-      success: false,
-      error: 'Validation failed',
-      fieldErrors: validation.error.flatten().fieldErrors as Record<
-        string,
-        string[]
-      >,
-    }
-  }
-
-  const { email, password } = validation.data
-
-  try {
+export const loginAction = createAction({
+  schema: loginSchema,
+  requireAuth: false,
+  successMessage: 'Logged in successfully',
+  handler: async (input: LoginInput) => {
     const supabase = await createClient()
+
+    const { email, password } = input
 
     // Sign in the user
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -133,70 +93,44 @@ export async function loginAction(
     })
 
     if (error) {
-      return {
-        success: false,
-        error: 'Invalid email or password',
-      }
+      throw new Error('Invalid email or password')
     }
 
     if (!data.session) {
-      return {
-        success: false,
-        error: 'Failed to create session',
-      }
+      throw new Error('Failed to create session')
     }
 
     revalidatePath('/', 'layout')
-    return {
-      success: true,
-      data: undefined,
-      message: 'Logged in successfully',
-    }
-  } catch (error) {
-    console.error('Login error:', error)
-    return {
-      success: false,
-      error: 'An unexpected error occurred. Please try again.',
-    }
-  }
-}
+    return undefined
+  },
+})
 
 /**
  * Log out the current user
  */
-export async function logoutAction(): Promise<ActionResponse<void>> {
-  try {
+export const logoutAction = createAction({
+  requireAuth: false,
+  successMessage: 'Logged out successfully',
+  handler: async () => {
     const supabase = await createClient()
 
     const { error } = await supabase.auth.signOut()
 
     if (error) {
-      return {
-        success: false,
-        error: error.message,
-      }
+      throw new Error(error.message)
     }
 
     revalidatePath('/', 'layout')
-    return {
-      success: true,
-      data: undefined,
-      message: 'Logged out successfully',
-    }
-  } catch (error) {
-    console.error('Logout error:', error)
-    return {
-      success: false,
-      error: 'An unexpected error occurred. Please try again.',
-    }
-  }
-}
+    return undefined
+  },
+})
 
 /**
  * Sign in with Google OAuth
  */
-export async function signInWithGoogleAction(): Promise<ActionResponse<{ url: string }>> {
-  try {
+export const signInWithGoogleAction = createAction({
+  requireAuth: false,
+  handler: async () => {
     const supabase = await createClient()
 
     const { data, error } = await supabase.auth.signInWithOAuth({
@@ -207,28 +141,13 @@ export async function signInWithGoogleAction(): Promise<ActionResponse<{ url: st
     })
 
     if (error) {
-      return {
-        success: false,
-        error: error.message,
-      }
+      throw new Error(error.message)
     }
 
     if (!data.url) {
-      return {
-        success: false,
-        error: 'Failed to get OAuth URL',
-      }
+      throw new Error('Failed to get OAuth URL')
     }
 
-    return {
-      success: true,
-      data: { url: data.url },
-    }
-  } catch (error) {
-    console.error('Google sign-in error:', error)
-    return {
-      success: false,
-      error: 'An unexpected error occurred. Please try again.',
-    }
-  }
-}
+    return { url: data.url }
+  },
+})

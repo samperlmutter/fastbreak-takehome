@@ -18,6 +18,11 @@ interface ActionOptions<TInput, TOutput> {
   requireAuth?: boolean
 
   /**
+   * Optional success message to include in the response
+   */
+  successMessage?: string
+
+  /**
    * The actual action handler
    */
   handler: (input: TInput, userId?: string) => Promise<TOutput>
@@ -83,9 +88,25 @@ export function createAction<TInput = void, TOutput = void>(
         // Execute the handler with user ID
         const result = await options.handler(validatedInput, user.id)
 
+        // Check if handler returned a custom message
+        const isResultWithMessage =
+          result &&
+          typeof result === 'object' &&
+          'data' in result &&
+          'message' in result
+
+        if (isResultWithMessage) {
+          return {
+            success: true,
+            data: (result as any).data,
+            message: (result as any).message || options.successMessage,
+          }
+        }
+
         return {
           success: true,
           data: result,
+          ...(options.successMessage && { message: options.successMessage }),
         }
       } else {
         // No auth required - validate and execute
@@ -110,9 +131,25 @@ export function createAction<TInput = void, TOutput = void>(
 
         const result = await options.handler(validatedInput, undefined)
 
+        // Check if handler returned a custom message
+        const isResultWithMessage =
+          result &&
+          typeof result === 'object' &&
+          'data' in result &&
+          'message' in result
+
+        if (isResultWithMessage) {
+          return {
+            success: true,
+            data: (result as any).data,
+            message: (result as any).message || options.successMessage,
+          }
+        }
+
         return {
           success: true,
           data: result,
+          ...(options.successMessage && { message: options.successMessage }),
         }
       }
     } catch (error) {
