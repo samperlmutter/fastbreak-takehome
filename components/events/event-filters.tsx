@@ -1,7 +1,5 @@
 'use client'
 
-import { useRouter, useSearchParams } from 'next/navigation'
-import { useState, useTransition } from 'react'
 import { Search } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import {
@@ -26,56 +24,26 @@ const SPORT_TYPES = [
 ]
 
 interface EventFiltersProps {
-  initialSearch?: string
-  initialSportType?: string
+  search: string
+  sportType: string
+  onSearchChange: (value: string) => void
+  onSportTypeChange: (value: string) => void
 }
 
 export function EventFilters({
-  initialSearch = '',
-  initialSportType = '',
+  search,
+  sportType,
+  onSearchChange,
+  onSportTypeChange,
 }: EventFiltersProps) {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const [isPending, startTransition] = useTransition()
-
-  const [search, setSearch] = useState(initialSearch)
-  const [sportType, setSportType] = useState(initialSportType)
-
-  const updateFilters = (newSearch: string, newSportType: string) => {
-    const params = new URLSearchParams(searchParams)
-
-    if (newSearch) {
-      params.set('search', newSearch)
-    } else {
-      params.delete('search')
-    }
-
-    if (newSportType) {
-      params.set('sportType', newSportType)
-    } else {
-      params.delete('sportType')
-    }
-
-    startTransition(() => {
-      router.push(`/dashboard?${params.toString()}`)
-    })
-  }
-
-  const handleSearchChange = (value: string) => {
-    setSearch(value)
-    updateFilters(value, sportType)
-  }
-
   const handleSportTypeChange = (value: string) => {
     const newValue = value === 'all' ? '' : value
-    setSportType(newValue)
-    updateFilters(search, newValue)
+    onSportTypeChange(newValue)
   }
 
   const handleClearFilters = () => {
-    setSearch('')
-    setSportType('')
-    router.push('/dashboard')
+    onSearchChange('')
+    onSportTypeChange('')
   }
 
   return (
@@ -87,9 +55,8 @@ export function EventFilters({
           <Input
             placeholder="Search events by name..."
             value={search}
-            onChange={(e) => handleSearchChange(e.target.value)}
+            onChange={(e) => onSearchChange(e.target.value)}
             className="pl-10"
-            disabled={isPending}
           />
         </div>
 
@@ -97,7 +64,6 @@ export function EventFilters({
         <Select
           value={sportType || 'all'}
           onValueChange={handleSportTypeChange}
-          disabled={isPending}
         >
           <SelectTrigger className="w-full sm:w-60">
             <SelectValue placeholder="Filter by sport" />
@@ -130,7 +96,6 @@ export function EventFilters({
           <button
             onClick={handleClearFilters}
             className="text-sm text-primary hover:underline"
-            disabled={isPending}
           >
             Clear all
           </button>
